@@ -1,4 +1,4 @@
-# Project 1 (P1): CLI AI Helper with Tool Calling (Python + Gemini)
+# Project 1 (P1): AI Helper That Uses Tools (Python + Gemini)
 
 A lightweight, CLI-only Python assistant built for Quayutec onboarding. It demonstrates:
 - Explicit multi-step tool-calling loop (`model -> tool -> result -> model`)
@@ -9,51 +9,94 @@ A lightweight, CLI-only Python assistant built for Quayutec onboarding. It demon
 ## Project Structure
 
 ```text
-project-1/
+ai-helper-that-uses-tools/
 ├── agent.py           # CLI entrypoint, plain chat check, tool-calling loop, Pydantic validation
 ├── tools.py           # 3 local/free tools + Gemini FunctionDeclaration schemas
 ├── schemas.py         # Pydantic BaseModel (AgentResponse) for structured output
-├── notes/             # Sample local markdown notes searched by search_notes()
+├── requirements.txt   # Python dependencies
+├── .env.example       # Template for environment variables
+├── .gitignore         # Excludes .env, .venv/, __pycache__/
+├── notes/             # Optional local .md/.txt notes searched by search_notes()
 │   ├── onboarding.md
 │   ├── meetings.md
 │   └── tech_stack.md
-├── requirements.txt   # Python dependencies
-├── .env.example       # Template for environment variables
-├── .gitignore
 └── README.md
 ```
 
-## Setup (Clone & Run)
+### About `notes/`
+The `notes/` folder holds local Markdown (`.md`) and text (`.txt`) files that the `search_notes()` tool searches when you ask questions about your onboarding, schedule, or tech stack. It is **optional**—if `notes/` is missing or empty, `search_notes()` returns an empty result cleanly without crashing, and `add_days()` / `get_weather_info()` continue to work normally.
 
-1. **Clone the repository** and enter the project folder:
-   ```bash
-   git clone <your-repo-url>
-   cd project-1
-   ```
+---
 
-2. **Create and activate a virtual environment** (Python 3.11+ recommended):
-   ```bash
-   python -m venv .venv
-   # Windows (PowerShell):
-   .venv\Scripts\Activate.ps1
-   # macOS / Linux:
-   source .venv/bin/activate
-   ```
+## Setup & Installation
 
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Clone the repository
+```bash
+git clone https://github.com/Istiak-ahamed/ai-helper-that-uses-tools.git
+cd ai-helper-that-uses-tools
+```
 
-4. **Configure your free Google AI Studio API key**:
-   - Get a free key from [Google AI Studio](https://aistudio.google.com/apikey).
-   - Copy `.env.example` to `.env`:
+### 2. Install dependencies
+
+#### Option A: With a Virtual Environment (Recommended)
+Create the virtual environment:
+```bash
+python -m venv .venv
+```
+
+Activate it based on your terminal:
+- **Windows (PowerShell):**
+  ```powershell
+  .\.venv\Scripts\Activate.ps1
+  ```
+- **Windows (Git Bash):**
+  ```bash
+  source .venv/Scripts/activate
+  ```
+- **Windows (Command Prompt):**
+  ```cmd
+  .\.venv\Scripts\activate.bat
+  ```
+- **macOS / Linux:**
+  ```bash
+  source .venv/bin/activate
+  ```
+
+Install dependencies inside `.venv`:
+```bash
+pip install -r requirements.txt
+```
+
+#### Option B: Without a Virtual Environment
+If you prefer to install packages directly into your global/user Python environment:
+```bash
+pip install -r requirements.txt
+```
+*(You can then run `python agent.py` directly without activating any `.venv`.)*
+
+---
+
+### 3. Configure your Gemini API key
+1. Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey).
+2. Copy `.env.example` to `.env`:
+   - **Bash / macOS / Linux:**
      ```bash
      cp .env.example .env
      ```
-   - Edit `.env` and set `GEMINI_API_KEY=your_actual_key`.
+   - **PowerShell:**
+     ```powershell
+     Copy-Item .env.example .env
+     ```
+3. Open `.env` and set your key (and optionally the model):
+   ```env
+   GEMINI_API_KEY=your_actual_api_key_here
+   GEMINI_MODEL=gemini-3.5-flash-lite
+   ```
+   *(If `GEMINI_MODEL` is not set, it defaults to `gemini-3.8-flash` with automatic fallback to `gemini-3.5-flash-lite` on `503` overload.)*
 
-## Usage
+---
+
+## Running the CLI
 
 ### 1. Plain Chat Check (No Tools)
 Verify your API key and connectivity:
@@ -72,4 +115,4 @@ Start an interactive session:
 ```bash
 python agent.py
 ```
-Type `exit` or `quit` to leave.
+Type your question and press Enter. Type `exit` or `quit` to stop.

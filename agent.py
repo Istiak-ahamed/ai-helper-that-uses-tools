@@ -1,11 +1,12 @@
 import argparse
 import os
 import sys
+import time
 from typing import Any
 
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 from schemas import AgentResponse
 from tools import TOOL_DECLARATIONS, execute_tool
@@ -31,7 +32,10 @@ def create_client() -> tuple[genai.Client, str]:
         sys.exit(1)
 
     model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
-    return genai.Client(api_key=api_key), model_name
+    return genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=15_000),
+    ), model_name
 
 
 def accumulate_tokens(totals: dict[str, int], usage: Any) -> None:
@@ -51,9 +55,38 @@ def print_token_usage(totals: dict[str, int]) -> None:
     )
 
 
+def generate_with_retry(
+    client: genai.Client,
+    model: str,
+    contents: Any,
+    config: types.GenerateContentConfig | None = None,
+    fallback_model: str = "gemini-3.5-flash-lite",
+) -> Any:
+    """Call generate_content with retry on transient 503/5xx errors and model fallback."""
+    models_to_try = [model] if model == fallback_model else [model, fallback_model]
+    last_exc: Exception | None = None
+
+    for candidate_model in models_to_try:
+        for attempt in range(2):
+            try:
+                return client.models.generate_content(
+                    model=candidate_model,
+                    contents=contents,
+                    config=config,
+                )
+            except errors.ServerError as exc:
+                last_exc = exc
+                if attempt == 0:
+                    time.sleep(1.5)
+                    continue
+        print(f"[Notice] {candidate_model} unavailable (503), trying fallback...")
+
+    raise last_exc  # type: ignore[misc]
+
+
 def run_plain_chat(client: genai.Client, model: str, question: str) -> None:
     """Plain chat check without tools, useful for verifying API connectivity."""
-    response = client.models.generate_content(model=model, contents=question)
+    response = generate_with_retry(client, model, question)
     totals = {"prompt": 0, "candidates": 0, "total": 0}
     accumulate_tokens(totals, response.usage_metadata)
 
@@ -73,9 +106,10 @@ def run_tool_agent(
     tools_used: list[str] = []
 
     for step in range(1, max_steps + 1):
-        response = client.models.generate_content(
-            model=model,
-            contents=contents,
+        response = generate_with_retry(
+            client,
+            model,
+            contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
                 tools=[TOOL_DECLARATIONS],
@@ -131,9 +165,10 @@ def run_tool_agent(
             ],
         )
     )
-    structured_response = client.models.generate_content(
-        model=model,
-        contents=contents,
+    structured_response = generate_with_retry(
+        client,
+        model,
+        contents,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=AgentResponse,
