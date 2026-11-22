@@ -30,7 +30,7 @@ def create_client() -> tuple[genai.Client, str]:
         )
         sys.exit(1)
 
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
     return genai.Client(api_key=api_key), model_name
 
 
